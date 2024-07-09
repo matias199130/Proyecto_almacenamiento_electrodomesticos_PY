@@ -1,0 +1,16 @@
+[
+    {
+        "codigo": "3",
+        "nombre": "Heladera",
+        "descripcion": "Para Enfriar Las Chelas ",
+        "precio": 200000.0,
+        "stock": 40
+    },
+    {
+        "codigo": "4",
+        "nombre": "Agujeriadora",
+        "descripcion": "Para Hacer Agujeritos En Tu Corazon",
+        "precio": 20000.0,
+        "stock": 20
+    }
+]
