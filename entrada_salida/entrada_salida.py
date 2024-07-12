@@ -1,5 +1,5 @@
 import json
-from auth import cargar_usuarios, autenticar_usuario, registrar_usuario
+from auth import cargar_usuarios_pickle, autenticar_usuario, registrar_usuario
 """ from entrada_salida.entrada_salida import mostrar_menu_inicio_sesion """
 
 def dar_bienvenida():

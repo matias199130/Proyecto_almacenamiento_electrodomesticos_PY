@@ -1,0 +1,52 @@
+{
+    "usuarios": {
+        "matias": {
+            "productos": [
+                {
+                    "codigo": "18",
+                    "nombre": "Alskdnal",
+                    "marca": "Alksnd",
+                    "descripcion": "Sldknf",
+                    "precio": 2342.0,
+                    "stock": 345
+                },
+                {
+                    "codigo": "21",
+                    "nombre": "Laskndad",
+                    "marca": "Alsknds",
+                    "descripcion": "Sslkfn",
+                    "precio": 345.0,
+                    "stock": 564
+                },
+                {
+                    "codigo": "24",
+                    "nombre": "La Ha Con La Ha",
+                    "marca": "Mi Mama Me Mima",
+                    "descripcion": "Corazon Mentiroso",
+                    "precio": 23.0,
+                    "stock": 455
+                }
+            ]
+        },
+        "matias91": {
+            "productos": [
+                {
+                    "codigo": "22",
+                    "nombre": "Callejero",
+                    "marca": "Unicate",
+                    "descripcion": "Nose Lo Que Pongo",
+                    "precio": 111.0,
+                    "stock": 222
+                },
+                {
+                    "codigo": "23",
+                    "nombre": "Fifarria",
+                    "marca": "Lolaso",
+                    "descripcion": "Mota",
+                    "precio": 112.0,
+                    "stock": 334
+                }
+            ]
+        }
+    }
+}

@@ -7,25 +7,33 @@ from entrada_salida.entrada_salida import (
     mostrar_error, visualizar_stock, mostrar_menu_inicio_sesion, pedir_credenciales
 )
 from validaciones.validaciones import validar_nuevo_producto, validar_producto
-from auth import cargar_usuarios, autenticar_usuario, guardar_usuarios, registrar_usuario
+from auth import hash_password, cargar_usuarios_pickle, guardar_usuarios_pickle, registrar_usuario
 
-def cargar_productos(archivo="data/productos.json"):
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+def cargar_datos(archivo="data/datos.json"):
     if os.path.exists(archivo):
         with open(archivo, 'r') as f:
-            productos = json.load(f)
-            return productos
-    return []
+            datos = json.load(f)
+            return datos
+    return {"usuarios": {}}
 
-def guardar_productos(productos, archivo="data/productos.json"):
+def guardar_datos(datos, archivo="data/datos.json"):
     try:
         with open(archivo, 'w') as f:
-            json.dump(productos, f, indent=4)
+            json.dump(datos, f, indent=4)
     except Exception as e:
-        print(f"Error al guardar productos: {e}")
+        logging.error(f"Error al guardar datos: {e}")
 
 def guardar_contador(codigo_actual, archivo="data/contador.json"):
-    with open(archivo, 'w') as f:
-        json.dump({"contador": codigo_actual}, f, indent=4)
+    try:
+        with open(archivo, 'w') as f:
+            json.dump({"contador": codigo_actual}, f, indent=4)
+    except Exception as e:
+        logging.error(f"Error al guardar el contador: {e}")
 
 def cargar_contador(archivo="data/contador.json"):
     if os.path.exists(archivo):
@@ -34,7 +42,8 @@ def cargar_contador(archivo="data/contador.json"):
             return data.get("contador", 0)
     return 0
 
-def eliminar_producto(productos, codigo, contador_codigo):
+def eliminar_producto(datos, usuario, codigo, contador_codigo):
+    productos = datos["usuarios"].get(usuario, {}).get("productos", [])
     producto_encontrado = False
     productos_actualizados = []
     for producto in productos:
@@ -44,43 +53,52 @@ def eliminar_producto(productos, codigo, contador_codigo):
             productos_actualizados.append(producto)
     
     if producto_encontrado:
-        # Decrementar el contador si el producto fue encontrado y eliminado
+        datos["usuarios"][usuario]["productos"] = productos_actualizados
         contador_codigo -= 1
-        guardar_productos(productos_actualizados)
+        guardar_datos(datos)
         guardar_contador(contador_codigo)
         return "Producto eliminado correctamente.", contador_codigo
     else:
         return "Producto no encontrado.", contador_codigo
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+def autenticar_usuario(usuarios_pickle_path="data/usuarios.pickle"):
+    usuarios = cargar_usuarios_pickle(usuarios_pickle_path)  # Cargar los usuarios desde el archivo Pickle
+    username = input("Ingrese su nombre de usuario: ")
+    password = input("Ingrese su contraseña: ")
+    hashed_password = hash_password(password)  # Ciframos la contraseña
+    if username in usuarios and usuarios[username]["password"] == hashed_password:
+        print("Autenticación exitosa.")
+        return username  # Devolver el nombre de usuario autenticado
+    else:
+        print("Autenticación fallida. Usuario o contraseña incorrectos.")
+        return None
 
 def main():
     logging.info('Iniciando la aplicación')
 
     dar_bienvenida()  # Mensaje de bienvenida al inicio de la aplicación
 
-    usuarios = cargar_usuarios()
+    usuarios = cargar_usuarios_pickle()
+    usuario_autenticado = None
 
     while True:
         opcion_inicio = mostrar_menu_inicio_sesion()
         logging.debug(f'Opción seleccionada en el menú de inicio de sesión: {opcion_inicio}')
         if opcion_inicio == "1":
-            if autenticar_usuario( usuarios):
+            usuario_autenticado = autenticar_usuario()
+            if usuario_autenticado:
                 print("Autenticación exitosa.")
-                guardar_usuarios(usuarios)  # Guardar credenciales después de autenticar
+                guardar_usuarios_pickle(usuarios)  # Guardar credenciales después de autenticar
                 break
             else:
-                logging.warning(f'Autenticación fallida para el usuario {username}')
+                logging.warning(f'Autenticación fallida')
                 print("Usuario o contraseña incorrectos.")
         elif opcion_inicio == "2":
             username = pedir_credenciales()
             mensaje, usuarios = registrar_usuario(usuarios)  # Asignar el valor de retorno a usuarios
             logging.info(mensaje)
             print(mensaje)
-            guardar_usuarios(usuarios)  # Guardar credenciales después de registrar
+            guardar_usuarios_pickle(usuarios)  # Guardar credenciales después de registrar
         elif opcion_inicio == "3":
             despedir()
             logging.info('Saliendo de la aplicación')
@@ -90,10 +108,7 @@ def main():
             logging.warning('Opción no válida en el menú de inicio de sesión')
 
     contador_codigo = cargar_contador()
-    productos = cargar_productos()
-    nuevo_producto = {"usuario": usuarios}
-    productos.append(nuevo_producto)
-    guardar_productos(productos)
+    datos = cargar_datos()
 
     while True:
         opcion = mostrar_menu()
@@ -102,21 +117,32 @@ def main():
             contador_codigo += 1
             guardar_contador(contador_codigo)
             nombre, marca, descripcion, precio, stock = pedir_datos_sin_codigo()
+            productos = datos["usuarios"].get(usuario_autenticado, {}).get("productos", [])
             respuesta = validar_nuevo_producto(productos, str(codigo))
             if respuesta is not None:
                 mostrar_respuesta(respuesta)
             else:
-                producto = {"usuarios": usuarios[0]},{"codigo": str(codigo), "nombre": nombre, "marca": marca, "descripcion": descripcion, "precio": precio, "stock": stock}
-                productos.append(producto)
-                guardar_productos(productos)
+                producto = {
+                    "codigo": str(codigo),
+                    "nombre": nombre,
+                    "marca": marca,
+                    "descripcion": descripcion,
+                    "precio": precio,
+                    "stock": stock
+                }
+                if usuario_autenticado not in datos["usuarios"]:
+                    datos["usuarios"][usuario_autenticado] = {"productos": []}
+                datos["usuarios"][usuario_autenticado]["productos"].append(producto)
+                guardar_datos(datos)
                 confirmar()
         elif opcion == "2":
             codigo = pedir_codigo()
-            respuesta, contador_codigo = eliminar_producto(productos, codigo, contador_codigo)
+            respuesta, contador_codigo = eliminar_producto(datos, usuario_autenticado, codigo, contador_codigo)
             mostrar_respuesta(respuesta)
             confirmar()
         elif opcion == "3":
             codigo = pedir_codigo()
+            productos = datos["usuarios"].get(usuario_autenticado, {}).get("productos", [])
             respuesta = validar_producto(productos, codigo)
             if respuesta is not None:
                 mostrar_respuesta(respuesta)
@@ -131,10 +157,11 @@ def main():
                             "precio": datos_actualizados[4],
                             "stock": datos_actualizados[5],
                         })
-                guardar_productos(productos)
+                guardar_datos(datos)
                 confirmar()
         elif opcion == "4":
             codigo = pedir_codigo()
+            productos = datos["usuarios"].get(usuario_autenticado, {}).get("productos", [])
             respuesta = validar_producto(productos, codigo)
             if respuesta is not None:
                 mostrar_respuesta(respuesta)
@@ -143,9 +170,10 @@ def main():
                     if producto["codigo"] == codigo:
                         mostrar_datos(producto)
         elif opcion == "5":
+            productos = datos["usuarios"].get(usuario_autenticado, {}).get("productos", [])
             listar_productos(productos)
         elif opcion == "6":
-            # Visualizar stock
+            productos = datos["usuarios"].get(usuario_autenticado, {}).get("productos", [])
             while True:
                 opcion_stock = mostrar_menu_visualizacion_stock()
                 if opcion_stock == "1":
